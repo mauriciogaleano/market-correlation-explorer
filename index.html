@@ -3,180 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Market Correlation Explorer</title>
-  <!-- Plotly.js CDN -->
+  <title>Market Correlation Explorer MVP</title>
+  <!-- Plotly.js for heatmap -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <!-- html2canvas for export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Bootstrap for tooltips & popovers -->
+  <!-- Bootstrap CSS & JS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     #date { color: #666; }
-    #sentiment, #prices, #news { max-width: 700px; margin: 10px auto; }
-    #sentiment .card, #prices .card, #news .card { margin-bottom: 10px; }
     #controls { text-align: center; margin: 15px 0; }
-    #heatmap { width: 100%; max-width: 700px; margin: auto; }
-    #exportBtn, .affiliate-btn { margin: 5px; }
+    #heatmap { width: 100%; max-width: 600px; margin: auto; }
+    #prices { max-width: 600px; margin: auto; }
     .change-up { color: green; }
     .change-down { color: red; }
-    @media (max-width: 600px) {
-      #heatmap { max-width: 100%; }
-      .affiliate-btn { display: block; width: 80%; margin: 5px auto; }
-    }
   </style>
 </head>
 <body>
-  <div class="text-center mb-1">
-    <h3 class="d-inline">Market Correlation Explorer</h3>
-    <p id="date" class="mt-1"></p>
-    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="popover" title="Correlation Info" data-bs-content="1 = Perfect positive; 0 = No correlation; -1 = Perfect negative.">ℹ️</button>
+  <div class="text-center mb-3">
+    <h3>Market Correlation Explorer</h3>
+    <p id="date"></p>
+    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" title="Info" data-bs-content="Heatmap shows correlation; green change means price up; red means down.">ℹ️</button>
   </div>
 
-  <!-- Current Prices -->
-  <div id="prices">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title text-center">Current Prices & Changes</h5>
-        <ul id="priceList" class="list-group list-group-flush">
-          <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)</li>
-          <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)</li>
-          <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span></li>
-          <li class="list-group-item">S&amp;P 500: <span id="priceSP">...</span></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- News Feed -->
-  <div id="news">
-    <h5 class="text-center">Latest News</h5>
-    <div class="card">
-      <div class="card-body">
-        <h6>Crypto News</h6>
-        <ul id="cryptoList" class="list-group mb-3"></ul>
-        <h6>Metals News</h6>
-        <ul id="metalsList" class="list-group mb-3"></ul>
-        <h6>Market News</h6>
-        <ul id="sharesList" class="list-group"></ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- Controls -->
   <div id="controls">
     <select id="rangeSelect" class="form-select form-select-sm d-inline w-auto">
       <option value="1D">1 Day</option>
       <option value="1W" selected>1 Week</option>
       <option value="1M">1 Month</option>
     </select>
-    <button id="exportBtn" class="btn btn-primary btn-sm">Export as PNG</button>
+    <button id="exportBtn" class="btn btn-primary btn-sm ms-2">Export as PNG</button>
   </div>
 
-  <!-- Heatmap -->
   <div id="heatmap"></div>
 
-  <!-- Twitter Feeds -->
-  <div id="twitterFeeds" class="text-center mt-3">
-    <a class="twitter-timeline" data-width="300" data-height="400" data-theme="light" href="https://twitter.com/CoinDesk">Tweets by CoinDesk</a>
-    <a class="twitter-timeline" data-width="300" data-height="400" data-theme="light" href="https://twitter.com/BlackRock">Tweets by BlackRock</a>
-  </div>
-  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-  <!-- Affiliate Links -->
-  <div id="affiliates" class="text-center mt-3">
-    <a href="https://www.etoro.com/?aff=YOURCODE" target="_blank" class="btn btn-outline-success affiliate-btn">Trade S&amp;P on eToro</a>
-    <a href="https://www.binance.com/?ref=YOURCODE" target="_blank" class="btn btn-outline-warning affiliate-btn">Trade Crypto on Binance</a>
+  <div id="prices" class="mt-4">
+    <h5 class="text-center">Current Prices & Changes</h5>
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)</li>
+      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)</li>
+      <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span></li>
+      <li class="list-group-item">S&P 500: <span id="priceSP">...</span></li>
+    </ul>
   </div>
 
   <script>
-    // Correlation data remains same...
+    // Static correlation matrices for 6 assets
     const correlationData = {
-      '1D': [[1.00,0.85,-0.04,0.08,0.35,0.36],[0.85,1.00,-0.05,0.10,0.30,0.32],[-0.04,-0.05,1.00,-0.30,0.01,0.02],[0.08,0.10,-0.30,1.00,0.18,0.16],[0.35,0.30,0.01,0.18,1.00,0.97],[0.36,0.32,0.02,0.16,0.97,1.00]],
-      '1W': [[1.00,0.82,-0.044,0.076,0.36,0.37],[0.82,1.00,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1.00,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1.00,0.18,0.16],[0.36,0.34,0.0099,0.18,1.00,0.97],[0.37,0.35,0.02,0.16,0.97,1.00]],
-      '1M': [[1.00,0.80,-0.05,0.10,0.40,0.42],[0.80,1.00,-0.06,0.12,0.38,0.40],[-0.05,-0.06,1.00,-0.28,0.02,0.03],[0.10,0.12,-0.28,1.00,0.20,0.18],[0.40,0.38,0.02,0.20,1.00,0.95],[0.42,0.40,0.03,0.18,0.95,1.00]]
+      '1D': [[1,0.85,-0.04,0.08,0.35,0.36],[0.85,1,-0.05,0.1,0.3,0.32],[-0.04,-0.05,1,-0.3,0.01,0.02],[0.08,0.1,-0.3,1,0.18,0.16],[0.35,0.3,0.01,0.18,1,0.97],[0.36,0.32,0.02,0.16,0.97,1]],
+      '1W': [[1,0.82,-0.044,0.076,0.36,0.37],[0.82,1,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1,0.18,0.16],[0.36,0.34,0.0099,0.18,1,0.97],[0.37,0.35,0.02,0.16,0.97,1]],
+      '1M': [[1,0.8,-0.05,0.1,0.4,0.42],[0.8,1,-0.06,0.12,0.38,0.4],[-0.05,-0.06,1,-0.28,0.02,0.03],[0.1,0.12,-0.28,1,0.2,0.18],[0.4,0.38,0.02,0.2,1,0.95],[0.42,0.4,0.03,0.18,0.95,1]]
     };
     const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
-    const feeds = { crypto: 'https://feeds.feedburner.com/CoinDesk', metals: 'https://mining.com/feed/', shares: 'http://feeds.reuters.com/reuters/USmarketsNews' };
 
-    async function fetchSentiment() {
-      try {
-        const res = await fetch('https://api.alternative.me/fng/?limit=1');
-        return (await res.json()).data[0].value;
-      } catch { return 'N/A'; }
-    }
+    // Fetch live prices and 24h change
     async function fetchPrices() {
-      try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
-        const json = await res.json();
-        const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
-        const goldJson = await goldRes.json();
-        const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
-        const spJson = await spRes.json();
-        return {
-          BTC: '$' + json.bitcoin.usd.toLocaleString(),
-          changeBTC: json.bitcoin.usd_24h_change.toFixed(2) + '%',
-          ETH: '$' + json.ethereum.usd.toLocaleString(),
-          changeETH: json.ethereum.usd_24h_change.toFixed(2) + '%',
-          GOLD: '$' + goldJson[0].price.toLocaleString(),
-          SP: '$' + spJson[0].price.toLocaleString()
-        };
-      } catch { return {} }
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+      const data = await res.json();
+      const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
+      const gold = await goldRes.json();
+      const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
+      const sp = await spRes.json();
+      return {
+        BTC: '$'+data.bitcoin.usd,
+        changeBTC: data.bitcoin.usd_24h_change.toFixed(2)+'%',
+        ETH: '$'+data.ethereum.usd,
+        changeETH: data.ethereum.usd_24h_change.toFixed(2)+'%',
+        GOLD: '$'+gold[0].price,
+        SP: '$'+sp[0].price
+      };
     }
-    async function loadNews() {
-      for (const [key, url] of Object.entries(feeds)) {
-        try {
-          const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
-          const items = (await res.json()).items.slice(0,5);
-          const listEl = document.getElementById(key + 'List');
-          items.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
-            li.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a>`;
-            listEl.appendChild(li);
-          });
-        } catch (e) { console.error('News fetch error:', key, e); }
-      }
+
+    function applyPrices(prices) {
+      // BTC
+      document.getElementById('priceBTC').textContent = prices.BTC;
+      const cb = document.getElementById('changeBTC');
+      cb.textContent = prices.changeBTC;
+      cb.className = prices.changeBTC.startsWith('-')?'change-down':'change-up';
+      // ETH
+      document.getElementById('priceETH').textContent = prices.ETH;
+      const ce = document.getElementById('changeETH');
+      ce.textContent = prices.changeETH;
+      ce.className = prices.changeETH.startsWith('-')?'change-down':'change-up';
+      // Gold & SP
+      document.getElementById('priceGOLD').textContent = prices.GOLD;
+      document.getElementById('priceSP').textContent = prices.SP;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // Date
       document.getElementById('date').textContent = new Date().toLocaleString();
-      document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
-      document.getElementById('sentimentValue').textContent = (await fetchSentiment()) + ' / 100';
-      const prices = await fetchPrices();
-      if(prices.BTC) {
-        document.getElementById('priceBTC').textContent = prices.BTC;
-        document.getElementById('changeBTC').textContent = prices.changeBTC;
-        document.getElementById('changeBTC').className = prices.changeBTC.startsWith('-') ? 'change-down' : 'change-up';
-      }
-      if(prices.ETH) {
-        document.getElementById('priceETH').textContent = prices.ETH;
-        document.getElementById('changeETH').textContent = prices.changeETH;
-        document.getElementById('changeETH').className = prices.changeETH.startsWith('-') ? 'change-down' : 'change-up';
-      }
-      document.getElementById('priceGOLD').textContent = prices.GOLD || 'N/A';
-      document.getElementById('priceSP').textContent = prices.SP || 'N/A';
-      await loadNews();
-      // heatmap
+      // Popover
+      new bootstrap.Popover(document.querySelector('[data-bs-toggle="popover"]'));
+      // Plot heatmap
       const select = document.getElementById('rangeSelect');
-      plotHeatmap(correlationData[select.value]);
       select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
-      // export
+      plotHeatmap(correlationData[select.value]);
+      // Fetch & apply prices
+      const prices = await fetchPrices();
+      applyPrices(prices);
+      // Export
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
-          const link = document.createElement('a');
-          link.download = `correlation_heatmap_${select.value}.png`;
-          link.href = canvas.toDataURL();
-          link.click();
+          const link = document.createElement('a'); link.download = 'heatmap.png'; link.href = canvas.toDataURL(); link.click();
         });
       });
     });
+
     function plotHeatmap(matrix) {
-      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type: 'heatmap', colorscale: 'RdBu', reversescale: true,
-        hovertemplate: '<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>' }],
-        { margin: { t: 20, b: 50, l: 50, r: 20 }, xaxis: { side: 'bottom' }, yaxis: { autorange: 'reversed' } }, { responsive: true }
-      );
+      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type: 'heatmap', colorscale:'RdBu', reversescale:true,
+        hovertemplate:'<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>' }],
+        {margin:{t:20,b:50,l:50,r:20}, xaxis:{side:'bottom'}, yaxis:{autorange:'reversed'}}, {responsive:true});
     }
   </script>
 </body>
