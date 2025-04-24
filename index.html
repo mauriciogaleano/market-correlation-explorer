@@ -19,13 +19,14 @@
     #prices { max-width: 600px; margin: auto; }
     .change-up { color: green; }
     .change-down { color: red; }
+    .badge { margin-left: 10px; }
   </style>
 </head>
 <body>
   <div class="text-center mb-3">
     <h3>Market Correlation Explorer</h3>
     <p id="date"></p>
-    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" title="Info" data-bs-content="Heatmap shows correlation; green change means price up; red means down.">ℹ️</button>
+    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" title="Info" data-bs-content="Heatmap shows correlation; green change means price up; red means down; F&G indexes represent crypto sentiment.">ℹ️</button>
   </div>
 
   <div id="controls">
@@ -42,15 +43,15 @@
   <div id="prices" class="mt-4">
     <h5 class="text-center">Current Prices & Changes</h5>
     <ul class="list-group list-group-flush">
-      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>) <span id="sentimentBTC" class="badge bg-info">F&G: ...</span></li>
-      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>) <span id="sentimentETH" class="badge bg-info">F&amp;G: ...</span></li>
-      <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span> <span id="sentimentGOLD" class="badge bg-secondary">N/A</span></li>
-      <li class="list-group-item">S&P 500: <span id="priceSP">...</span> <span id="sentimentSP" class="badge bg-secondary">N/A</span></li>
+      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)<span id="sentimentBTC" class="badge bg-info">F&G: ...</span></li>
+      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)<span id="sentimentETH" class="badge bg-info">F&G: ...</span></li>
+      <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span><span id="sentimentGOLD" class="badge bg-secondary">N/A</span></li>
+      <li class="list-group-item">S&P 500: <span id="priceSP">...</span><span id="sentimentSP" class="badge bg-secondary">N/A</span></li>
     </ul>
   </div>
 
   <script>
-    // Static correlation matrices for 6 assets
+    // Correlation data for 6 assets
     const correlationData = {
       '1D': [[1,0.85,-0.04,0.08,0.35,0.36],[0.85,1,-0.05,0.1,0.3,0.32],[-0.04,-0.05,1,-0.3,0.01,0.02],[0.08,0.1,-0.3,1,0.18,0.16],[0.35,0.3,0.01,0.18,1,0.97],[0.36,0.32,0.02,0.16,0.97,1]],
       '1W': [[1,0.82,-0.044,0.076,0.36,0.37],[0.82,1,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1,0.18,0.16],[0.36,0.34,0.0099,0.18,1,0.97],[0.37,0.35,0.02,0.16,0.97,1]],
@@ -58,56 +59,57 @@
     };
     const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
 
-    // Fetch live prices and 24h change
-    async function fetchPrices() {
+    // Fetch live prices & sentiment for crypto
+    async function fetchData() {
       const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
-      const data = await res.json();
+      const json = await res.json();
+      // Fear & Greed for crypto
+      const fngRes = await fetch('https://api.alternative.me/fng/?limit=1');
+      const fng = (await fngRes.json()).data[0].value;
       const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
-      const gold = await goldRes.json();
+      const gold = (await goldRes.json())[0].price;
       const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
-      const sp = await spRes.json();
+      const sp = (await spRes.json())[0].price;
       return {
-        BTC: '$'+data.bitcoin.usd,
-        changeBTC: data.bitcoin.usd_24h_change.toFixed(2)+'%',
-        ETH: '$'+data.ethereum.usd,
-        changeETH: data.ethereum.usd_24h_change.toFixed(2)+'%',
-        GOLD: '$'+gold[0].price,
-        SP: '$'+sp[0].price
+        BTC: '$'+json.bitcoin.usd,
+        changeBTC: json.bitcoin.usd_24h_change.toFixed(2)+'%',
+        ETH: '$'+json.ethereum.usd,
+        changeETH: json.ethereum.usd_24h_change.toFixed(2)+'%',
+        fng,
+        GOLD: '$'+gold,
+        SP: '$'+sp
       };
     }
 
-    function applyPrices(prices) {
-      // BTC
-      document.getElementById('priceBTC').textContent = prices.BTC;
-      const cb = document.getElementById('changeBTC');
-      cb.textContent = prices.changeBTC;
-      cb.className = prices.changeBTC.startsWith('-')?'change-down':'change-up';
-      // ETH
-      document.getElementById('priceETH').textContent = prices.ETH;
-      const ce = document.getElementById('changeETH');
-      ce.textContent = prices.changeETH;
-      ce.className = prices.changeETH.startsWith('-')?'change-down':'change-up';
-      // Gold & SP
-      document.getElementById('priceGOLD').textContent = prices.GOLD;
-      document.getElementById('priceSP').textContent = prices.SP;
+    function updateUI(data) {
+      document.getElementById('priceBTC').textContent = data.BTC;
+      const cb = document.getElementById('changeBTC'); cb.textContent = data.changeBTC;
+      cb.className = data.changeBTC.startsWith('-')?'change-down':'change-up';
+      document.getElementById('sentimentBTC').textContent = 'F&G: '+data.fng;
+
+      document.getElementById('priceETH').textContent = data.ETH;
+      const ce = document.getElementById('changeETH'); ce.textContent = data.changeETH;
+      ce.className = data.changeETH.startsWith('-')?'change-down':'change-up';
+      document.getElementById('sentimentETH').textContent = 'F&G: '+data.fng;
+
+      document.getElementById('priceGOLD').textContent = data.GOLD;
+      document.getElementById('priceSP').textContent = data.SP;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Date
       document.getElementById('date').textContent = new Date().toLocaleString();
-      // Popover
       new bootstrap.Popover(document.querySelector('[data-bs-toggle="popover"]'));
-      // Plot heatmap
       const select = document.getElementById('rangeSelect');
       select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
       plotHeatmap(correlationData[select.value]);
-      // Fetch & apply prices
-      const prices = await fetchPrices();
-      applyPrices(prices);
-      // Export
+
+      const data = await fetchData();
+      updateUI(data);
+
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
-          const link = document.createElement('a'); link.download = 'heatmap.png'; link.href = canvas.toDataURL(); link.click();
+          const link = document.createElement('a'); link.download = `heatmap_${select.value}.png`;
+          link.href = canvas.toDataURL(); link.click();
         });
       });
     });
