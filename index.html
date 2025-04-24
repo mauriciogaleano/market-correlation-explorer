@@ -20,6 +20,7 @@
     .change-up { color: green; }
     .change-down { color: red; }
     .badge { margin-left: 10px; }
+    .list-group-item a { margin-left: 8px; text-decoration: none; font-size: 1.2em; }
   </style>
 </head>
 <body>
@@ -43,15 +44,31 @@
   <div id="prices" class="mt-4">
     <h5 class="text-center">Current Prices & Changes</h5>
     <ul class="list-group list-group-flush">
-      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)<span id="sentimentBTC" class="badge bg-info">F&G: ...</span></li>
-      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)<span id="sentimentETH" class="badge bg-info">F&G: ...</span></li>
-      <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span><span id="sentimentGOLD" class="badge bg-secondary">N/A</span></li>
-      <li class="list-group-item">S&P 500: <span id="priceSP">...</span><span id="sentimentSP" class="badge bg-secondary">N/A</span></li>
+      <li class="list-group-item">
+        Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)<span id="sentimentBTC" class="badge bg-info">F&G: ...</span>
+        <a href="https://www.tradingview.com/symbols/BTCUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
+        <a href="https://www.coindesk.com/price/bitcoin?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
+      </li>
+      <li class="list-group-item">
+        Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)<span id="sentimentETH" class="badge bg-info">F&G: ...</span>
+        <a href="https://www.tradingview.com/symbols/ETHUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
+        <a href="https://www.coindesk.com/price/ethereum?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
+      </li>
+      <li class="list-group-item">
+        Gold (USD/oz): <span id="priceGOLD">...</span><span id="sentimentGOLD" class="badge bg-secondary">N/A</span>
+        <a href="https://www.tradingview.com/symbols/XAUUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
+        <a href="https://www.kitco.com/news/" target="_blank" title="Latest News">📰</a>
+      </li>
+      <li class="list-group-item">
+        S&P 500: <span id="priceSP">...</span><span id="sentimentSP" class="badge bg-secondary">N/A</span>
+        <a href="https://www.tradingview.com/symbols/SPX/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
+        <a href="https://www.reuters.com/markets/us/" target="_blank" title="Latest News">📰</a>
+      </li>
     </ul>
   </div>
 
   <script>
-    // Correlation data for 6 assets
+    // Correlation data
     const correlationData = {
       '1D': [[1,0.85,-0.04,0.08,0.35,0.36],[0.85,1,-0.05,0.1,0.3,0.32],[-0.04,-0.05,1,-0.3,0.01,0.02],[0.08,0.1,-0.3,1,0.18,0.16],[0.35,0.3,0.01,0.18,1,0.97],[0.36,0.32,0.02,0.16,0.97,1]],
       '1W': [[1,0.82,-0.044,0.076,0.36,0.37],[0.82,1,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1,0.18,0.16],[0.36,0.34,0.0099,0.18,1,0.97],[0.37,0.35,0.02,0.16,0.97,1]],
@@ -59,11 +76,9 @@
     };
     const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
 
-    // Fetch live prices & sentiment for crypto
     async function fetchData() {
       const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
       const json = await res.json();
-      // Fear & Greed for crypto
       const fngRes = await fetch('https://api.alternative.me/fng/?limit=1');
       const fng = (await fngRes.json()).data[0].value;
       const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
@@ -83,13 +98,11 @@
 
     function updateUI(data) {
       document.getElementById('priceBTC').textContent = data.BTC;
-      const cb = document.getElementById('changeBTC'); cb.textContent = data.changeBTC;
-      cb.className = data.changeBTC.startsWith('-')?'change-down':'change-up';
+      const cb = document.getElementById('changeBTC'); cb.textContent = data.changeBTC; cb.className = data.changeBTC.startsWith('-')?'change-down':'change-up';
       document.getElementById('sentimentBTC').textContent = 'F&G: '+data.fng;
 
       document.getElementById('priceETH').textContent = data.ETH;
-      const ce = document.getElementById('changeETH'); ce.textContent = data.changeETH;
-      ce.className = data.changeETH.startsWith('-')?'change-down':'change-up';
+      const ce = document.getElementById('changeETH'); ce.textContent = data.changeETH; ce.className = data.changeETH.startsWith('-')?'change-down':'change-up';
       document.getElementById('sentimentETH').textContent = 'F&G: '+data.fng;
 
       document.getElementById('priceGOLD').textContent = data.GOLD;
@@ -102,10 +115,8 @@
       const select = document.getElementById('rangeSelect');
       select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
       plotHeatmap(correlationData[select.value]);
-
       const data = await fetchData();
       updateUI(data);
-
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
           const link = document.createElement('a'); link.download = `heatmap_${select.value}.png`;
