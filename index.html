@@ -4,22 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Market Correlation Explorer - Live Heatmap</title>
-  <!-- Use a fixed Plotly version to avoid breaking changes -->
+  <!-- Use fixed Plotly version to avoid breaking changes -->
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-  <!-- html2canvas for export functionality -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Bootstrap for styling and popovers -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <style>
-    /* Consolidate repetitive styling into classes to reduce duplication */
     body { font-family: Arial, sans-serif; margin: 20px; }
     #heatmap { width: 100%; max-width: 600px; margin: auto; height: 400px; }
     .text-center { text-align: center; }
     .change-up { color: green; }
     .change-down { color: red; }
     .badge { margin-left: 10px; }
-    /* Use utility classes where possible instead of custom CSS */
   </style>
 </head>
 <body>
@@ -28,7 +24,6 @@
     <p id="date"></p>
     <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" title="Info" data-bs-content="Live correlation heatmap across assets. Green=positive, red=negative.">ℹ️</button>
   </div>
-
   <div id="controls" class="text-center mb-3">
     <select id="rangeSelect" class="form-select form-select-sm d-inline w-auto">
       <option value="1">1 Day</option>
@@ -37,25 +32,20 @@
     </select>
     <button id="exportBtn" class="btn btn-primary btn-sm ms-2">Export Heatmap as PNG</button>
   </div>
-
   <div id="loading" class="text-center mb-3" style="display:none;">Loading data...</div>
   <div id="heatmap"></div>
-
   <div id="prices" class="mt-4">
     <h5 class="text-center">Current Prices & Changes</h5>
     <ul class="list-group list-group-flush">
-      <!-- Group similar items into a loop if templating engine available -->
-      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>) <span id="sentimentBTC" class="badge bg-info">F&amp;G: ...</span> <a href="#">📈</a> <a href="#">📰</a></li>
-      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>) <span id="sentimentETH" class="badge bg-info">F&amp;G: ...</span> <a href="#">📈</a> <a href="#">📰</a></li>
-      <li class="list-group-item">Gold: <span id="priceGOLD">...</span> <span id="sentimentGOLD" class="badge bg-secondary">N/A</span> <a href="#">📈</a> <a href="#">📰</a></li>
-      <li class="list-group-item">S&P 500: <span id="priceSP">...</span> <a href="#">📈</a> <a href="#">📰</a></li>
-      <li class="list-group-item">NASDAQ: <span id="priceIXIC">...</span> <a href="#">📈</a> <a href="#">📰</a></li>
-      <li class="list-group-item">Dollar Index: <span id="priceDXY">...</span> <a href="#">📈</a> <a href="#">📰</a></li>
+      <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>) <span id="sentimentBTC" class="badge bg-info">F&amp;G: ...</span></li>
+      <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>) <span id="sentimentETH" class="badge bg-info">F&amp;G: ...</span></li>
+      <li class="list-group-item">Gold: <span id="priceGOLD">...</span></li>
+      <li class="list-group-item">S&P 500: <span id="priceSP">...</span></li>
+      <li class="list-group-item">NASDAQ: <span id="priceIXIC">...</span></li>
+      <li class="list-group-item">Dollar Index: <span id="priceDXY">...</span></li>
     </ul>
   </div>
-
   <script>
-    // Configuration of symbols and their API identifiers
     const symbols = [
       { key: 'BTC', label: 'bitcoin' },
       { key: 'ETH', label: 'ethereum' },
@@ -65,13 +55,11 @@
       { key: 'DXY', label: '^DXY' }
     ];
     const labels = symbols.map(s => s.key);
-
-    // Compute Pearson correlation; could memoize repeated calculations for performance
     function pearson(x, y) {
       const n = x.length;
-      const avg = arr => arr.reduce((a,b) => a+b, 0) / n;
+      const avg = arr => arr.reduce((a,b) => a + b, 0) / n;
       const mx = avg(x), my = avg(y);
-      let num=0, sx=0, sy=0;
+      let num = 0, sx = 0, sy = 0;
       for (let i = 0; i < n; i++) {
         const dx = x[i] - mx, dy = y[i] - my;
         num += dx * dy;
@@ -80,25 +68,25 @@
       }
       return num / Math.sqrt(sx * sy);
     }
-
-    // Fetch historical series in parallel to reduce wait time
     async function fetchSeries(sym, days) {
       if (['bitcoin','ethereum','pax-gold'].includes(sym)) {
         const res = await fetch(`https://api.coingecko.com/api/v3/coins/${sym}/market_chart?vs_currency=usd&days=${days}`);
-        return (await res.json()).prices.map(p => p[1]);
+        const json = await res.json();
+        return json.prices.map(p => p[1]);
       }
       const res = await fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${encodeURIComponent(sym)}?timeseries=${days}&apikey=demo`);
-      return (await res.json()).historical.map(h => h.close).reverse();
+      const json = await res.json();
+      return json.historical.map(h => h.close).reverse();
     }
-
-    // Fetch live prices in bulk; separate calls for error isolation
     async function fetchPrices() {
       const data = {};
       try {
         const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,pax-gold&vs_currencies=usd&include_24hr_change=true');
         const json = await res.json();
-        data.BTC = `$${json.bitcoin.usd}`; data.changeBTC = `${json.bitcoin.usd_24h_change.toFixed(2)}%`;
-        data.ETH = `$${json.ethereum.usd}`; data.changeETH = `${json.ethereum.usd_24h_change.toFixed(2)}%`;
+        data.BTC = `$${json.bitcoin.usd}`;
+        data.changeBTC = `${json.bitcoin.usd_24h_change.toFixed(2)}%`;
+        data.ETH = `$${json.ethereum.usd}`;
+        data.changeETH = `${json.ethereum.usd_24h_change.toFixed(2)}%`;
         data.GOLD = `$${json['pax-gold'].usd}`;
       } catch (e) {
         console.error('Price fetch error', e);
@@ -107,7 +95,7 @@
         try {
           const res = await fetch(`https://financialmodelingprep.com/api/v3/quote/${encodeURIComponent(s)}?apikey=demo`);
           const json = await res.json();
-          data[s.slice(1)] = `$${json[0].price}`; // strip leading '^'
+          data[s.slice(1)] = `$${json[0].price}`;
         } catch (e) {
           console.error(`${s} fetch error`, e);
         }
@@ -121,37 +109,41 @@
       }
       return data;
     }
-
-    // Populate UI elements
-    async function updateUI(prices) {
-      document.getElementById('priceBTC').textContent = prices.BTC;
-      // ... similar updates for other elements
+    async function updateUI(pr) {
+      document.getElementById('priceBTC').textContent = pr.BTC;
+      document.getElementById('changeBTC').textContent = pr.changeBTC;
+      document.getElementById('changeBTC').className = pr.changeBTC.startsWith('-') ? 'change-down' : 'change-up';
+      document.getElementById('sentimentBTC').textContent = `F&G: ${pr.FNG}`;
+      document.getElementById('priceETH').textContent = pr.ETH;
+      document.getElementById('changeETH').textContent = pr.changeETH;
+      document.getElementById('changeETH').className = pr.changeETH.startsWith('-') ? 'change-down' : 'change-up';
+      document.getElementById('sentimentETH').textContent = `F&G: ${pr.FNG}`;
+      document.getElementById('priceGOLD').textContent = pr.GOLD;
+      document.getElementById('priceSP').textContent = pr.SP;
+      document.getElementById('priceIXIC').textContent = pr.IXIC;
+      document.getElementById('priceDXY').textContent = pr.DXY;
     }
-
-    // Main loader: fetch series in parallel, compute correlations, render heatmap
     async function loadHeatmap(days) {
       document.getElementById('loading').style.display = 'block';
-      const series = await Promise.all(symbols.map(({ label }) => fetchSeries(label, days)));
+      const series = await Promise.all(symbols.map(s => fetchSeries(s.label, days)));
       const matrix = series.map((a, i) => series.map((b, j) => pearson(a, b)));
-      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type: 'heatmap', colorscale: 'RdBu', reversescale: true }], { responsive: true });
+      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type:'heatmap', colorscale:'RdBu', reversescale:true }], {responsive:true});
       document.getElementById('loading').style.display = 'none';
     }
-
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('date').textContent = new Date().toLocaleString();
       new bootstrap.Popover(document.querySelector('[data-bs-toggle="popover"]'));
-      const rangeSelect = document.getElementById('rangeSelect');
-      rangeSelect.addEventListener('change', () => loadHeatmap(rangeSelect.value));
-      await loadHeatmap(rangeSelect.value);
+      const sel = document.getElementById('rangeSelect');
+      sel.addEventListener('change', () => loadHeatmap(sel.value));
+      await loadHeatmap(sel.value);
       const prices = await fetchPrices();
       await updateUI(prices);
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
-          const link = document.createElement('a'); link.download = `heatmap_${rangeSelect.value}d.png`; link.href = canvas.toDataURL(); link.click();
+          const link = document.createElement('a'); link.download = `heatmap_${sel.value}d.png`; link.href = canvas.toDataURL(); link.click();
         });
       });
     });
   </script>
 </body>
 </html>
-
