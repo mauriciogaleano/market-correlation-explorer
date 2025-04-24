@@ -19,7 +19,8 @@
     #controls { text-align: center; margin: 15px 0; }
     #heatmap { width: 100%; max-width: 700px; margin: auto; }
     #exportBtn, .affiliate-btn { margin: 5px; }
-    .list-group-item a { text-decoration: none; }
+    .change-up { color: green; }
+    .change-down { color: red; }
     @media (max-width: 600px) {
       #heatmap { max-width: 100%; }
       .affiliate-btn { display: block; width: 80%; margin: 5px auto; }
@@ -47,10 +48,10 @@
   <div id="prices">
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title text-center">Current Prices</h5>
+        <h5 class="card-title text-center">Current Prices & Changes</h5>
         <ul id="priceList" class="list-group list-group-flush">
-          <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span></li>
-          <li class="list-group-item">Ethereum: <span id="priceETH">...</span></li>
+          <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)</li>
+          <li class="list-group-item">Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)</li>
           <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span></li>
           <li class="list-group-item">S&amp;P 500: <span id="priceSP">...</span></li>
         </ul>
@@ -88,8 +89,8 @@
 
   <!-- Twitter Feeds -->
   <div id="twitterFeeds" class="text-center mt-3">
-    <a class="twitter-timeline" data-width="300" data-height="400" href="https://twitter.com/CoinDesk">Tweets by CoinDesk</a>
-    <a class="twitter-timeline" data-width="300" data-height="400" href="https://twitter.com/BlackRock">Tweets by BlackRock</a>
+    <a class="twitter-timeline" data-width="300" data-height="400" data-theme="light" href="https://twitter.com/CoinDesk">Tweets by CoinDesk</a>
+    <a class="twitter-timeline" data-width="300" data-height="400" data-theme="light" href="https://twitter.com/BlackRock">Tweets by BlackRock</a>
   </div>
   <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
@@ -100,47 +101,44 @@
   </div>
 
   <script>
-    const correlationData = { '1D': [[1.00,0.85,-0.04,0.08,0.35,0.36],[0.85,1.00,-0.05,0.10,0.30,0.32],[-0.04,-0.05,1.00,-0.30,0.01,0.02],[0.08,0.10,-0.30,1.00,0.18,0.16],[0.35,0.30,0.01,0.18,1.00,0.97],[0.36,0.32,0.02,0.16,0.97,1.00]],
+    // Correlation data remains same...
+    const correlationData = {
+      '1D': [[1.00,0.85,-0.04,0.08,0.35,0.36],[0.85,1.00,-0.05,0.10,0.30,0.32],[-0.04,-0.05,1.00,-0.30,0.01,0.02],[0.08,0.10,-0.30,1.00,0.18,0.16],[0.35,0.30,0.01,0.18,1.00,0.97],[0.36,0.32,0.02,0.16,0.97,1.00]],
       '1W': [[1.00,0.82,-0.044,0.076,0.36,0.37],[0.82,1.00,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1.00,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1.00,0.18,0.16],[0.36,0.34,0.0099,0.18,1.00,0.97],[0.37,0.35,0.02,0.16,0.97,1.00]],
-      '1M': [[1.00,0.80,-0.05,0.10,0.40,0.42],[0.80,1.00,-0.06,0.12,0.38,0.40],[-0.05,-0.06,1.00,-0.28,0.02,0.03],[0.10,0.12,-0.28,1.00,0.20,0.18],[0.40,0.38,0.02,0.20,1.00,0.95],[0.42,0.40,0.03,0.18,0.95,1.00]] };
-    const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
-    const feeds = {
-      crypto: 'https://feeds.feedburner.com/CoinDesk',
-      metals: 'https://mining.com/feed/',
-      shares: 'http://feeds.reuters.com/reuters/USmarketsNews'
+      '1M': [[1.00,0.80,-0.05,0.10,0.40,0.42],[0.80,1.00,-0.06,0.12,0.38,0.40],[-0.05,-0.06,1.00,-0.28,0.02,0.03],[0.10,0.12,-0.28,1.00,0.20,0.18],[0.40,0.38,0.02,0.20,1.00,0.95],[0.42,0.40,0.03,0.18,0.95,1.00]]
     };
+    const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
+    const feeds = { crypto: 'https://feeds.feedburner.com/CoinDesk', metals: 'https://mining.com/feed/', shares: 'http://feeds.reuters.com/reuters/USmarketsNews' };
 
     async function fetchSentiment() {
-      const res = await fetch('https://api.alternative.me/fng/?limit=1');
-      const json = await res.json();
-      return json.data[0].value;
+      try {
+        const res = await fetch('https://api.alternative.me/fng/?limit=1');
+        return (await res.json()).data[0].value;
+      } catch { return 'N/A'; }
     }
     async function fetchPrices() {
-      const [btc, eth] = await Promise.all([
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'),
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
-      ]);
-      const [goldRes, spRes] = await Promise.all([
-        fetch('https://api.metals.live/v1/spot/gold'),
-        fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo')
-      ]);
-      const btcJson = await btc.json();
-      const ethJson = await eth.json();
-      const goldJson = await goldRes.json();
-      const spJson = await spRes.json();
-      return {
-        BTC: '$' + btcJson.bitcoin.usd.toLocaleString(),
-        ETH: '$' + ethJson.ethereum.usd.toLocaleString(),
-        GOLD: '$' + goldJson[0].price.toLocaleString(),
-        SP: '$' + spJson[0].price.toLocaleString()
-      };
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+        const json = await res.json();
+        const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
+        const goldJson = await goldRes.json();
+        const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
+        const spJson = await spRes.json();
+        return {
+          BTC: '$' + json.bitcoin.usd.toLocaleString(),
+          changeBTC: json.bitcoin.usd_24h_change.toFixed(2) + '%',
+          ETH: '$' + json.ethereum.usd.toLocaleString(),
+          changeETH: json.ethereum.usd_24h_change.toFixed(2) + '%',
+          GOLD: '$' + goldJson[0].price.toLocaleString(),
+          SP: '$' + spJson[0].price.toLocaleString()
+        };
+      } catch { return {} }
     }
     async function loadNews() {
       for (const [key, url] of Object.entries(feeds)) {
         try {
           const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
-          const json = await res.json();
-          const items = json.items.slice(0,5);
+          const items = (await res.json()).items.slice(0,5);
           const listEl = document.getElementById(key + 'List');
           items.forEach(item => {
             const li = document.createElement('li');
@@ -157,17 +155,24 @@
       document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
       document.getElementById('sentimentValue').textContent = (await fetchSentiment()) + ' / 100';
       const prices = await fetchPrices();
-      document.getElementById('priceBTC').textContent = prices.BTC;
-      document.getElementById('priceETH').textContent = prices.ETH;
-      document.getElementById('priceGOLD').textContent = prices.GOLD;
-      document.getElementById('priceSP').textContent = prices.SP;
-
+      if(prices.BTC) {
+        document.getElementById('priceBTC').textContent = prices.BTC;
+        document.getElementById('changeBTC').textContent = prices.changeBTC;
+        document.getElementById('changeBTC').className = prices.changeBTC.startsWith('-') ? 'change-down' : 'change-up';
+      }
+      if(prices.ETH) {
+        document.getElementById('priceETH').textContent = prices.ETH;
+        document.getElementById('changeETH').textContent = prices.changeETH;
+        document.getElementById('changeETH').className = prices.changeETH.startsWith('-') ? 'change-down' : 'change-up';
+      }
+      document.getElementById('priceGOLD').textContent = prices.GOLD || 'N/A';
+      document.getElementById('priceSP').textContent = prices.SP || 'N/A';
       await loadNews();
-
+      // heatmap
       const select = document.getElementById('rangeSelect');
       plotHeatmap(correlationData[select.value]);
       select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
-
+      // export
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
           const link = document.createElement('a');
