@@ -13,7 +13,10 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    #controls { text-align: center; margin-bottom: 15px; }
+    #date { color: #666; }
+    #sentiment, #prices { max-width: 600px; margin: 10px auto; }
+    #sentiment .card, #prices .card { margin-bottom: 10px; }
+    #controls { text-align: center; margin: 15px 0; }
     #heatmap { width: 100%; max-width: 600px; margin: auto; }
     #exportBtn, .affiliate-btn { margin: 5px; }
     @media (max-width: 600px) {
@@ -23,11 +26,34 @@
   </style>
 </head>
 <body>
-  <div class="text-center mb-3">
+  <div class="text-center mb-1">
     <h3 class="d-inline">Market Correlation Explorer</h3>
-    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="popover" title="Correlation Info" data-bs-content="1 = Perfect positive; 0 = No correlation; -1 = Perfect negative.">
-      ℹ️
-    </button>
+    <p id="date" class="mt-1"></p>
+    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="popover" title="Correlation Info" data-bs-content="1 = Perfect positive; 0 = No correlation; -1 = Perfect negative.">ℹ️</button>
+  </div>
+
+  <!-- Investor Sentiment -->
+  <div id="sentiment">
+    <div class="card">
+      <div class="card-body text-center">
+        <h5 class="card-title">Investor Sentiment (Fear & Greed Index)</h5>
+        <p id="sentimentValue" class="card-text fs-4">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current Prices -->
+  <div id="prices">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title text-center">Current Prices</h5>
+        <ul id="priceList" class="list-group list-group-flush">
+          <li class="list-group-item">Bitcoin: <span id="priceBTC">...</span></li>
+          <li class="list-group-item">Gold (USD/oz): <span id="priceGOLD">...</span></li>
+          <li class="list-group-item">S&P 500: <span id="priceSP">...</span></li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <div id="controls">
@@ -46,86 +72,73 @@
   </div>
 
   <script>
-    // Static correlation matrices (stub for dynamic API)
     const correlationData = {
-      '1D': [
-        [1.00, -0.04, 0.08, 0.35, 0.36],
-        [-0.04, 1.00, -0.30, 0.01, 0.02],
-        [0.08, -0.30, 1.00, 0.18, 0.16],
-        [0.35, 0.01, 0.18, 1.00, 0.97],
-        [0.36, 0.02, 0.16, 0.97, 1.00]
-      ],
-      '1W': [
-        [1.00, -0.044, 0.076, 0.36, 0.37],
-        [-0.044, 1.00, -0.31, 0.0099, 0.02],
-        [0.076, -0.31, 1.00, 0.18, 0.16],
-        [0.36, 0.0099, 0.18, 1.00, 0.97],
-        [0.37, 0.02, 0.16, 0.97, 1.00]
-      ],
-      '1M': [
-        [1.00, -0.05, 0.10, 0.40, 0.42],
-        [-0.05, 1.00, -0.28, 0.02, 0.03],
-        [0.10, -0.28, 1.00, 0.20, 0.18],
-        [0.40, 0.02, 0.20, 1.00, 0.95],
-        [0.42, 0.03, 0.18, 0.95, 1.00]
-      ]
+      '1D': [[1.00,-0.04,0.08,0.35,0.36],[-0.04,1.00,-0.30,0.01,0.02],[0.08,-0.30,1.00,0.18,0.16],[0.35,0.01,0.18,1.00,0.97],[0.36,0.02,0.16,0.97,1.00]],
+      '1W': [[1.00,-0.044,0.076,0.36,0.37],[-0.044,1.00,-0.31,0.0099,0.02],[0.076,-0.31,1.00,0.18,0.16],[0.36,0.0099,0.18,1.00,0.97],[0.37,0.02,0.16,0.97,1.00]],
+      '1M': [[1.00,-0.05,0.10,0.40,0.42],[-0.05,1.00,-0.28,0.02,0.03],[0.10,-0.28,1.00,0.20,0.18],[0.40,0.02,0.20,1.00,0.95],[0.42,0.03,0.18,0.95,1.00]]
     };
+    const labels = ['Bitcoin','Dollar Index','Gold','S&P 500','NASDAQ'];
 
-    const labels = ['Bitcoin', 'Dollar Index', 'Gold', 'S&P 500', 'NASDAQ'];
-
-    // Initialize popovers
-    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(function (popoverTriggerEl) {
-      return new bootstrap.Popover(popoverTriggerEl);
-    });
-
-    // Plot function
-    function plotHeatmap(matrix) {
-      const trace = {
-        x: labels,
-        y: labels,
-        z: matrix,
-        type: 'heatmap',
-        colorscale: 'RdBu',
-        reversescale: true,
-        hovertemplate: '<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>'
+    async function fetchSentiment() {
+      const res = await fetch('https://api.alternative.me/fng/?limit=1');
+      const json = await res.json();
+      return json.data[0].value;
+    }
+    async function fetchPrices() {
+      const [btcRes, goldRes, spRes] = await Promise.all([
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'),
+        fetch('https://api.metals.live/v1/spot/gold'),
+        fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo')
+      ]);
+      const btcJson = await btcRes.json();
+      const goldJson = await goldRes.json();
+      const spJson = await spRes.json();
+      return {
+        BTC: '$' + btcJson.bitcoin.usd.toLocaleString(),
+        GOLD: '$' + goldJson[0].price.toLocaleString(),
+        SP: '$' + spJson[0].price.toLocaleString()
       };
-      const layout = {
-        margin: { t: 20, b: 50, l: 50, r: 20 },
-        xaxis: { side: 'bottom' },
-        yaxis: { autorange: 'reversed' }
-      };
-      Plotly.newPlot('heatmap', [trace], layout, {responsive: true});
     }
 
-    // Stub for dynamic data fetch
-    async function fetchCorrelation(range) {
-      // TODO: replace with real API call, e.g. fetch(`/api/correlation?range=${range}`)
-      return correlationData[range];
-    }
-
-    // Initial load
     document.addEventListener('DOMContentLoaded', async () => {
+      // Date
+      document.getElementById('date').textContent = new Date().toLocaleString();
+
+      // Popovers
+      document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el));
+
+      // Load sentiment
+      const sentimentEl = document.getElementById('sentimentValue');
+      sentimentEl.textContent = (await fetchSentiment()) + ' / 100';
+
+      // Load prices
+      const prices = await fetchPrices();
+      document.getElementById('priceBTC').textContent = prices.BTC;
+      document.getElementById('priceGOLD').textContent = prices.GOLD;
+      document.getElementById('priceSP').textContent = prices.SP;
+
+      // Heatmap plotting
       const select = document.getElementById('rangeSelect');
-      const matrix = await fetchCorrelation(select.value);
-      plotHeatmap(matrix);
+      plotHeatmap(correlationData[select.value]);
+      select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
 
-      // Range change
-      select.addEventListener('change', async () => {
-        const data = await fetchCorrelation(select.value);
-        plotHeatmap(data);
-      });
-
-      // Export functionality
+      // Export
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
           const link = document.createElement('a');
-          link.download = 'correlation_heatmap_' + select.value + '.png';
+          link.download = `correlation_heatmap_${select.value}.png`;
           link.href = canvas.toDataURL();
           link.click();
         });
       });
     });
+
+    function plotHeatmap(matrix) {
+      Plotly.newPlot('heatmap', [{
+        x: labels, y: labels, z: matrix, type: 'heatmap', colorscale: 'RdBu', reversescale: true,
+        hovertemplate: '<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>'
+      }], {margin:{t:20,b:50,l:50,r:20}, xaxis:{side:'bottom'}, yaxis:{autorange:'reversed'}}, {responsive:true});
+    }
   </script>
 </body>
 </html>
