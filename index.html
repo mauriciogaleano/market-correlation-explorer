@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Market Correlation Explorer MVP</title>
+  <title>Market Correlation Explorer MVP</n  >
   <!-- Plotly.js for heatmap -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <!-- html2canvas for export -->
@@ -39,8 +39,10 @@
     <button id="exportBtn" class="btn btn-primary btn-sm ms-2">Export as PNG</button>
   </div>
 
+  <!-- Heatmap -->
   <div id="heatmap"></div>
 
+  <!-- Prices & Deep Links -->
   <div id="prices" class="mt-4">
     <h5 class="text-center">Current Prices & Changes</h5>
     <ul class="list-group list-group-flush">
@@ -48,31 +50,27 @@
         Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)<span id="sentimentBTC" class="badge bg-info">F&G: ...</span>
         <a href="https://www.tradingview.com/symbols/BTCUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.coindesk.com/price/bitcoin?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
-        <br><img id="sparkBTC" alt="BTC sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)<span id="sentimentETH" class="badge bg-info">F&G: ...</span>
         <a href="https://www.tradingview.com/symbols/ETHUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.coindesk.com/price/ethereum?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
-        <br><img id="sparkETH" alt="ETH sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         Gold (USD/oz): <span id="priceGOLD">...</span><span id="sentimentGOLD" class="badge bg-secondary">N/A</span>
         <a href="https://www.tradingview.com/symbols/XAUUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.kitco.com/news/" target="_blank" title="Latest News">📰</a>
-        <br><img id="sparkGOLD" alt="Gold sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         S&P 500: <span id="priceSP">...</span><span id="sentimentSP" class="badge bg-secondary">N/A</span>
         <a href="https://www.tradingview.com/symbols/SPX/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.reuters.com/markets/us/" target="_blank" title="Latest News">📰</a>
-        <br><img id="sparkSP" alt="SP sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
     </ul>
   </div>
 
   <script>
-    // Correlation data
+    // Correlation matrices
     const correlationData = {
       '1D': [[1,0.85,-0.04,0.08,0.35,0.36],[0.85,1,-0.05,0.1,0.3,0.32],[-0.04,-0.05,1,-0.3,0.01,0.02],[0.08,0.1,-0.3,1,0.18,0.16],[0.35,0.3,0.01,0.18,1,0.97],[0.36,0.32,0.02,0.16,0.97,1]],
       '1W': [[1,0.82,-0.044,0.076,0.36,0.37],[0.82,1,-0.05,0.08,0.34,0.35],[-0.044,-0.05,1,-0.31,0.0099,0.02],[0.076,0.08,-0.31,1,0.18,0.16],[0.36,0.34,0.0099,0.18,1,0.97],[0.37,0.35,0.02,0.16,0.97,1]],
@@ -80,53 +78,54 @@
     };
     const labels = ['Bitcoin','Ethereum','Dollar Index','Gold','S&P 500','NASDAQ'];
 
+    // Fetch live data
     async function fetchData() {
-      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
-      const json = await res.json();
-      const fngRes = await fetch('https://api.alternative.me/fng/?limit=1');
-      const fng = (await fngRes.json()).data[0].value;
-      const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
-      const gold = (await goldRes.json())[0].price;
-      const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
-      const sp = (await spRes.json())[0].price;
-      return {
-        BTC: '$'+json.bitcoin.usd,
-        changeBTC: json.bitcoin.usd_24h_change.toFixed(2)+'%',
-        ETH: '$'+json.ethereum.usd,
-        changeETH: json.ethereum.usd_24h_change.toFixed(2)+'%',
-        fng,
-        GOLD: '$'+gold,
-        SP: '$'+sp
-      };
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+        const json = await res.json();
+        const fngRes = await fetch('https://api.alternative.me/fng/?limit=1');
+        const fng = (await fngRes.json()).data[0].value;
+        const goldRes = await fetch('https://api.metals.live/v1/spot/gold');
+        const gold = (await goldRes.json())[0].price;
+        const spRes = await fetch('https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=demo');
+        const sp = (await spRes.json())[0].price;
+        return { BTC:'$'+json.bitcoin.usd, changeBTC:json.bitcoin.usd_24h_change.toFixed(2)+'%', ETH:'$'+json.ethereum.usd, changeETH:json.ethereum.usd_24h_change.toFixed(2)+'%', fng, GOLD:'$'+gold, SP:'$'+sp };
+      } catch(e) {
+        console.error('Data fetch error', e);
+        return {};
+      }
     }
 
     function updateUI(data) {
-      document.getElementById('priceBTC').textContent = data.BTC;
-      const cb = document.getElementById('changeBTC'); cb.textContent = data.changeBTC; cb.className = data.changeBTC.startsWith('-')?'change-down':'change-up';
-      document.getElementById('sentimentBTC').textContent = 'F&G: '+data.fng;
+      if(data.BTC) {
+        document.getElementById('priceBTC').textContent = data.BTC;
+        const cb = document.getElementById('changeBTC'); cb.textContent = data.changeBTC; cb.className = data.changeBTC.startsWith('-')?'change-down':'change-up';
+        document.getElementById('sentimentBTC').textContent = 'F&G: '+data.fng;
 
-      document.getElementById('priceETH').textContent = data.ETH;
-      const ce = document.getElementById('changeETH'); ce.textContent = data.changeETH; ce.className = data.changeETH.startsWith('-')?'change-down':'change-up';
-      document.getElementById('sentimentETH').textContent = 'F&G: '+data.fng;
+        document.getElementById('priceETH').textContent = data.ETH;
+        const ce = document.getElementById('changeETH'); ce.textContent = data.changeETH; ce.className = data.changeETH.startsWith('-')?'change-down':'change-up';
+        document.getElementById('sentimentETH').textContent = 'F&G: '+data.fng;
 
-      document.getElementById('priceGOLD').textContent = data.GOLD;
-      document.getElementById('priceSP').textContent = data.SP;
-
-      // Load sparklines
-      fetchSparkline('bitcoin', 'sparkBTC');
-      fetchSparkline('ethereum', 'sparkETH');
-      fetchSparkline('xau', 'sparkGOLD'); // Coingecko uses symbol 'gold' not supported; skip or custom
-      fetchSparkline('spx', 'sparkSP'); // SPX not in CoinGecko; skip or custom
+        document.getElementById('priceGOLD').textContent = data.GOLD;
+        document.getElementById('priceSP').textContent = data.SP;
+      }
     }
 
+    // Plot heatmap and bind UI
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('date').textContent = new Date().toLocaleString();
       new bootstrap.Popover(document.querySelector('[data-bs-toggle="popover"]'));
+
+      // Heatmap
       const select = document.getElementById('rangeSelect');
       select.addEventListener('change', () => plotHeatmap(correlationData[select.value]));
       plotHeatmap(correlationData[select.value]);
+
+      // Prices
       const data = await fetchData();
       updateUI(data);
+
+      // Export
       document.getElementById('exportBtn').addEventListener('click', () => {
         html2canvas(document.getElementById('heatmap')).then(canvas => {
           const link = document.createElement('a'); link.download = `heatmap_${select.value}.png`;
@@ -135,20 +134,9 @@
       });
     });
 
-    // New: sparkline fetch
-    async function fetchSparkline(id, elId) {
-      try {
-        const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=7`);
-        const json = await res.json();
-        const prices = json.prices.map(p => p[1]);
-        const qc = `https://quickchart.io/chart?c={type:'line',data:{labels:[...Array(${prices.length}).keys()],datasets:[{data:${JSON.stringify(prices)},fill:false}]},options:{scales:{x:{display:false},y:{display:false}},elements:{point:{radius:0}}}}&width=150&height=50`;
-        document.getElementById(elId).src = qc;
-      } catch(e) { console.error('sparkline error', id, e); }
-    }
-
-    function plotHeatmap(matrix)(matrix) {
-      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type: 'heatmap', colorscale:'RdBu', reversescale:true,
-        hovertemplate:'<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>' }],
+    // Core Plotly function
+    function plotHeatmap(matrix) {
+      Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type:'heatmap', colorscale:'RdBu', reversescale:true, hovertemplate:'<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>' }],
         {margin:{t:20,b:50,l:50,r:20}, xaxis:{side:'bottom'}, yaxis:{autorange:'reversed'}}, {responsive:true});
     }
   </script>
