@@ -48,21 +48,25 @@
         Bitcoin: <span id="priceBTC">...</span> (<span id="changeBTC">...</span>)<span id="sentimentBTC" class="badge bg-info">F&G: ...</span>
         <a href="https://www.tradingview.com/symbols/BTCUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.coindesk.com/price/bitcoin?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
+        <br><img id="sparkBTC" alt="BTC sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         Ethereum: <span id="priceETH">...</span> (<span id="changeETH">...</span>)<span id="sentimentETH" class="badge bg-info">F&G: ...</span>
         <a href="https://www.tradingview.com/symbols/ETHUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.coindesk.com/price/ethereum?ref=YOUR_COIN_DESC_AFF" target="_blank" title="Latest News">📰</a>
+        <br><img id="sparkETH" alt="ETH sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         Gold (USD/oz): <span id="priceGOLD">...</span><span id="sentimentGOLD" class="badge bg-secondary">N/A</span>
         <a href="https://www.tradingview.com/symbols/XAUUSD/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.kitco.com/news/" target="_blank" title="Latest News">📰</a>
+        <br><img id="sparkGOLD" alt="Gold sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
       <li class="list-group-item">
         S&P 500: <span id="priceSP">...</span><span id="sentimentSP" class="badge bg-secondary">N/A</span>
         <a href="https://www.tradingview.com/symbols/SPX/?aff=YOUR_TV_AFFILIATE" target="_blank" title="Full Chart">📈</a>
         <a href="https://www.reuters.com/markets/us/" target="_blank" title="Latest News">📰</a>
+        <br><img id="sparkSP" alt="SP sparkline" style="width:150px;height:50px;margin-top:5px;" />
       </li>
     </ul>
   </div>
@@ -107,6 +111,12 @@
 
       document.getElementById('priceGOLD').textContent = data.GOLD;
       document.getElementById('priceSP').textContent = data.SP;
+
+      // Load sparklines
+      fetchSparkline('bitcoin', 'sparkBTC');
+      fetchSparkline('ethereum', 'sparkETH');
+      fetchSparkline('xau', 'sparkGOLD'); // Coingecko uses symbol 'gold' not supported; skip or custom
+      fetchSparkline('spx', 'sparkSP'); // SPX not in CoinGecko; skip or custom
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -125,7 +135,18 @@
       });
     });
 
-    function plotHeatmap(matrix) {
+    // New: sparkline fetch
+    async function fetchSparkline(id, elId) {
+      try {
+        const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=7`);
+        const json = await res.json();
+        const prices = json.prices.map(p => p[1]);
+        const qc = `https://quickchart.io/chart?c={type:'line',data:{labels:[...Array(${prices.length}).keys()],datasets:[{data:${JSON.stringify(prices)},fill:false}]},options:{scales:{x:{display:false},y:{display:false}},elements:{point:{radius:0}}}}&width=150&height=50`;
+        document.getElementById(elId).src = qc;
+      } catch(e) { console.error('sparkline error', id, e); }
+    }
+
+    function plotHeatmap(matrix)(matrix) {
       Plotly.newPlot('heatmap', [{ x: labels, y: labels, z: matrix, type: 'heatmap', colorscale:'RdBu', reversescale:true,
         hovertemplate:'<b>%{y}</b> vs <b>%{x}</b>: %{z:.2f}<extra></extra>' }],
         {margin:{t:20,b:50,l:50,r:20}, xaxis:{side:'bottom'}, yaxis:{autorange:'reversed'}}, {responsive:true});
