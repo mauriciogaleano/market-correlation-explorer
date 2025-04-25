@@ -12,7 +12,7 @@
 
     /* center & bump font for prices */
     .prices-section {
-      font-size: 12px;
+      font-size: 36px;
       text-align: center;
     }
   </style>
@@ -126,7 +126,7 @@
       const cgHist = d=>fetch(d).then(r=>r.json()).then(j=>j.prices.map(p=>p[1])).catch(()=>[]);
       const b = await cgHist('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7');
       document.getElementById('sparkBTC').src = qc(b);
-      const e = await cgHist('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currencies=usd&days=7');
+      const e = await cgHist('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=7');
       document.getElementById('sparkETH').src = qc(e);
       const g = await cgHist('https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currencies=usd&days=7');
       document.getElementById('sparkGOLD').src = qc(g);
