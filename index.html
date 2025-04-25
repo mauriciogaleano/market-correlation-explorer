@@ -9,6 +9,12 @@
     #heatmap { width:100%; max-width:700px; height:400px; margin:auto; }
     .toolbar { display:flex; justify-content:center; gap:8px; margin-bottom:1rem; }
     .spark { width: 100px; height: 30px; vertical-align: middle; }
+
+    /* center & bump font for prices */
+    .prices-section {
+      font-size: 12px;
+      text-align: center;
+    }
   </style>
 </head>
 <body class="p-3">
@@ -26,37 +32,39 @@
 
   <div id="heatmap"></div>
 
-  <h5 class="mt-4">Current Prices & Changes</h5>
-  <ul id="priceList" class="list-group mb-4">
-    <li class="list-group-item">
-      Bitcoin: <span id="priceBTC">…</span> (<span id="changeBTC">…</span>) 
-      <span id="sentBTC" class="badge bg-info">F&G …</span>
-      <img id="sparkBTC" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank">📈</a>
-      <a href="https://www.coindesk.com/price/bitcoin" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      Ethereum: <span id="priceETH">…</span> (<span id="changeETH">…</span>) 
-      <span id="sentETH" class="badge bg-info">F&G …</span> 
-      <img id="sparkETH" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/ETHUSD/" target="_blank">📈</a>
-      <a href="https://www.coindesk.com/price/ethereum" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      Gold (USD/oz): <span id="priceGOLD">…</span> (<span id="changeGOLD">…</span>) 
-      <span id="sentGOLD" class="badge bg-secondary">N/A</span>
-      <img id="sparkGOLD" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/XAUUSD/" target="_blank">📈</a>
-      <a href="https://www.kitco.com/news/" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      S&P 500: <span id="priceSP">N/A</span> (<span id="changeSP">N/A</span>) 
-      <span id="sentSP" class="badge bg-secondary">N/A</span>
-      <img id="sparkSP" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/SPX/" target="_blank">📈</a>
-      <a href="https://www.reuters.com/markets/us/" target="_blank">📰</a>
-    </li>
-  </ul>
+  <div class="prices-section">
+    <h5 class="mt-4">Current Prices & Changes</h5>
+    <ul id="priceList" class="list-group mb-4">
+      <li class="list-group-item">
+        Bitcoin: <span id="priceBTC">…</span> (<span id="changeBTC">…</span>) 
+        <span id="sentBTC" class="badge bg-info">F&G …</span>
+        <img id="sparkBTC" class="spark" src="" alt="">
+        <a href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank">📈</a>
+        <a href="https://www.coindesk.com/price/bitcoin" target="_blank">📰</a>
+      </li>
+      <li class="list-group-item">
+        Ethereum: <span id="priceETH">…</span> (<span id="changeETH">…</span>) 
+        <span id="sentETH" class="badge bg-info">F&G …</span> 
+        <img id="sparkETH" class="spark" src="" alt="">
+        <a href="https://www.tradingview.com/symbols/ETHUSD/" target="_blank">📈</a>
+        <a href="https://www.coindesk.com/price/ethereum" target="_blank">📰</a>
+      </li>
+      <li class="list-group-item">
+        Gold (USD/oz): <span id="priceGOLD">…</span> (<span id="changeGOLD">…</span>) 
+        <span id="sentGOLD" class="badge bg-secondary">N/A</span>
+        <img id="sparkGOLD" class="spark" src="" alt="">
+        <a href="https://www.tradingview.com/symbols/XAUUSD/" target="_blank">📈</a>
+        <a href="https://www.kitco.com/news/" target="_blank">📰</a>
+      </li>
+      <li class="list-group-item">
+        S&P 500: <span id="priceSP">N/A</span> (<span id="changeSP">N/A</span>) 
+        <span id="sentSP" class="badge bg-secondary">N/A</span>
+        <img id="sparkSP" class="spark" src="" alt="">
+        <a href="https://www.tradingview.com/symbols/SPX/" target="_blank">📈</a>
+        <a href="https://www.reuters.com/markets/us/" target="_blank">📰</a>
+      </li>
+    </ul>
+  </div>
 
   <h5>Latest News</h5>
   <div class="row">
@@ -82,10 +90,8 @@
   <script async src="https://platform.twitter.com/widgets.js"></script>
 
   <script>
-    // date
     document.getElementById('currentDate').innerText = new Date().toLocaleString();
 
-    // static heatmap data
     const STATIC_HEAT = [
       [1,0.8,-0.1,0.3],
       [0.8,1,-0.2,0.4],
@@ -100,7 +106,6 @@
       }],{margin:{l:50,t:20,r:20,b:50},yaxis:{autorange:'reversed'}});
     }
 
-    // fetch live prices & changes
     async function fetchPrices() {
       const j = u=>fetch(u).then(r=>r.json()).catch(()=>null);
       const cg = await j('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,pax-gold&vs_currencies=usd&include_24hr_change=true');
@@ -116,23 +121,20 @@
       document.getElementById('changeGOLD').innerText = 'N/A';
     }
 
-    // sparklines via QuickChart & Coingecko
     async function loadSparks() {
       const qc = s=>`https://quickchart.io/chart?c={type:'sparkline',data:{datasets:[{data:${JSON.stringify(s)} }]}}`;
       const cgHist = d=>fetch(d).then(r=>r.json()).then(j=>j.prices.map(p=>p[1])).catch(()=>[]);
       const b = await cgHist('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7');
       document.getElementById('sparkBTC').src = qc(b);
-      const e = await cgHist('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=7');
+      const e = await cgHist('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currencies=usd&days=7');
       document.getElementById('sparkETH').src = qc(e);
-      const g = await cgHist('https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currency=usd&days=7');
+      const g = await cgHist('https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currencies=usd&days=7');
       document.getElementById('sparkGOLD').src = qc(g);
-      // S&P via FMP
       const fmp = await fetch('https://financialmodelingprep.com/api/v3/historical-price-full/^GSPC?timeseries=7&apikey=demo')
         .then(r=>r.json()).then(j=>j.historical.map(h=>h.close).reverse()).catch(()=>[]);
       document.getElementById('sparkSP').src = qc(fmp);
     }
 
-    // news via RSS2JSON
     async function loadNews() {
       const feed = (url,id) => fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
         .then(r=>r.json())
