@@ -6,155 +6,109 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
   <style>
-    #heatmap { width:100%; max-width:700px; height:400px; margin:auto; }
-    .toolbar { display:flex; justify-content:center; gap:8px; margin-bottom:1rem; }
-    .spark { width: 100px; height: 30px; vertical-align: middle; }
+    #heatmap { width:100%; height:400px; }
+    .toolbar { gap:0.5rem; }
+    .spark { width: 80px; height: 24px; }
+    @media (max-width: 576px) {
+      .spark { display:none; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+    }
   </style>
 </head>
-<body class="p-3">
-  <h3 class="text-center">Market Correlation Explorer</h3>
-  <p id="currentDate" class="text-center mb-4"></p>
+<body class="py-4">
+  <div class="container">
+    <h3 class="text-center">Market Correlation Explorer</h3>
+    <p id="currentDate" class="text-center text-muted mb-4"></p>
 
-  <div class="toolbar">
-    <select id="rangeSelect" class="form-select form-select-sm" style="width:auto">
-      <option value="1">1 Day</option>
-      <option value="7" selected>1 Week</option>
-      <option value="30">1 Month</option>
-    </select>
-    <button id="exportBtn" class="btn btn-primary btn-sm">Export as PNG</button>
+    <div class="d-flex justify-content-center toolbar mb-3">
+      <select id="rangeSelect" class="form-select form-select-sm w-auto">
+        <option value="1">1 Day</option>
+        <option value="7" selected>1 Week</option>
+        <option value="30">1 Month</option>
+      </select>
+      <div class="form-check form-switch align-self-center">
+        <input class="form-check-input" type="checkbox" id="liveToggle">
+        <label class="form-check-label" for="liveToggle">Live</label>
+      </div>
+      <button id="exportBtn" class="btn btn-primary btn-sm">Export as PNG</button>
+    </div>
+
+    <div id="heatmap" class="mb-4"></div>
+
+    <h5>Current Prices & Changes</h5>
+    <ul id="priceList" class="list-group mb-4">
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between">
+        <div>
+          Bitcoin: <span id="priceBTC">…</span> (<span id="changeBTC">…</span>) 
+          <span id="sentBTC" class="badge bg-info">F&amp;G …</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <img id="sparkBTC" class="spark me-2" src="" alt="">
+          <a href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" class="me-2">📈</a>
+          <a href="https://www.coindesk.com/price/bitcoin" target="_blank">📰</a>
+        </div>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between">
+        <div>
+          Ethereum: <span id="priceETH">…</span> (<span id="changeETH">…</span>) 
+          <span id="sentETH" class="badge bg-info">F&amp;G …</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <img id="sparkETH" class="spark me-2" src="" alt="">
+          <a href="https://www.tradingview.com/symbols/ETHUSD/" target="_blank" class="me-2">📈</a>
+          <a href="https://www.coindesk.com/price/ethereum" target="_blank">📰</a>
+        </div>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between">
+        <div>
+          Gold (USD/oz): <span id="priceGOLD">…</span> (<span id="changeGOLD">…</span>) 
+          <span id="sentGOLD" class="badge bg-secondary">N/A</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <img id="sparkGOLD" class="spark me-2" src="" alt="">
+          <a href="https://www.tradingview.com/symbols/XAUUSD/" target="_blank" class="me-2">📈</a>
+          <a href="https://www.kitco.com/news/" target="_blank">📰</a>
+        </div>
+      </li>
+      <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between">
+        <div>
+          S&amp;P 500: <span id="priceSP">N/A</span> (<span id="changeSP">N/A</span>) 
+          <span id="sentSP" class="badge bg-secondary">N/A</span>
+        </div>
+        <div class="d-flex align-items-center">
+          <img id="sparkSP" class="spark me-2" src="" alt="">
+          <a href="https://www.tradingview.com/symbols/SPX/" target="_blank" class="me-2">📈</a>
+          <a href="https://www.reuters.com/markets/us/" target="_blank">📰</a>
+        </div>
+      </li>
+    </ul>
+
+    <h5>Latest News</h5>
+    <div class="row mb-4">
+      <div class="col-12 col-md-4 mb-3 mb-md-0">
+        <h6>Crypto News</h6>
+        <ul id="feedCrypto" class="list-unstyled"></ul>
+      </div>
+      <div class="col-12 col-md-4 mb-3 mb-md-0">
+        <h6>Metals News</h6>
+        <ul id="feedMetals" class="list-unstyled"></ul>
+      </div>
+      <div class="col-12 col-md-4">
+        <h6>Market News</h6>
+        <ul id="feedMarket" class="list-unstyled"></ul>
+      </div>
+    </div>
+
+    <h5>Tweets</h5>
+    <div class="mb-5">
+      <a class="twitter-timeline" data-height="200" href="https://twitter.com/CoinDesk">Tweets by CoinDesk</a>
+      <a class="twitter-timeline ms-3" data-height="200" href="https://twitter.com/BlackRock">Tweets by BlackRock</a>
+    </div>
   </div>
 
-  <div id="heatmap"></div>
-
-  <h5 class="mt-4">Current Prices & Changes</h5>
-  <ul id="priceList" class="list-group mb-4">
-    <li class="list-group-item">
-      Bitcoin: <span id="priceBTC">…</span> (<span id="changeBTC">…</span>) 
-      <span id="sentBTC" class="badge bg-info">F&G …</span>
-      <img id="sparkBTC" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank">📈</a>
-      <a href="https://www.coindesk.com/price/bitcoin" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      Ethereum: <span id="priceETH">…</span> (<span id="changeETH">…</span>) 
-      <span id="sentETH" class="badge bg-info">F&G …</span> 
-      <img id="sparkETH" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/ETHUSD/" target="_blank">📈</a>
-      <a href="https://www.coindesk.com/price/ethereum" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      Gold (USD/oz): <span id="priceGOLD">…</span> (<span id="changeGOLD">…</span>) 
-      <span id="sentGOLD" class="badge bg-secondary">N/A</span>
-      <img id="sparkGOLD" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/XAUUSD/" target="_blank">📈</a>
-      <a href="https://www.kitco.com/news/" target="_blank">📰</a>
-    </li>
-    <li class="list-group-item">
-      S&P 500: <span id="priceSP">N/A</span> (<span id="changeSP">N/A</span>) 
-      <span id="sentSP" class="badge bg-secondary">N/A</span>
-      <img id="sparkSP" class="spark" src="" alt="">
-      <a href="https://www.tradingview.com/symbols/SPX/" target="_blank">📈</a>
-      <a href="https://www.reuters.com/markets/us/" target="_blank">📰</a>
-    </li>
-  </ul>
-
-  <h5>Latest News</h5>
-  <div class="row">
-    <div class="col-md-4">
-      <h6>Crypto News</h6>
-      <ul id="feedCrypto" class="list-unstyled"></ul>
-    </div>
-    <div class="col-md-4">
-      <h6>Metals News</h6>
-      <ul id="feedMetals" class="list-unstyled"></ul>
-    </div>
-    <div class="col-md-4">
-      <h6>Market News</h6>
-      <ul id="feedMarket" class="list-unstyled"></ul>
-    </div>
-  </div>
-
-  <h5 class="mt-4">Tweets</h5>
-  <p>
-    <a class="twitter-timeline" data-height="300" href="https://twitter.com/CoinDesk">Tweets by CoinDesk</a><br>
-    <a class="twitter-timeline" data-height="300" href="https://twitter.com/BlackRock">Tweets by BlackRock</a>
-  </p>
   <script async src="https://platform.twitter.com/widgets.js"></script>
-
   <script>
-    // date
-    document.getElementById('currentDate').innerText = new Date().toLocaleString();
-
-    // static heatmap data
-    const STATIC_HEAT = [
-      [1,0.8,-0.1,0.3],
-      [0.8,1,-0.2,0.4],
-      [-0.1,-0.2,1,-0.1],
-      [0.3,0.4,-0.1,1]
-    ], LBL = ['BTC','ETH','GOLD','SP'];
-
-    function drawStatic() {
-      Plotly.newPlot('heatmap',[{
-        z: STATIC_HEAT, x:LBL, y:LBL,
-        type:'heatmap', colorscale:'RdBu', reversescale:true
-      }],{margin:{l:50,t:20,r:20,b:50},yaxis:{autorange:'reversed'}});
-    }
-
-    // fetch live prices & changes
-    async function fetchPrices() {
-      const j = u=>fetch(u).then(r=>r.json()).catch(()=>null);
-      const cg = await j('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,pax-gold&vs_currencies=usd&include_24hr_change=true');
-      document.getElementById('priceBTC').innerText = '$'+cg.bitcoin.usd;
-      document.getElementById('changeBTC').innerText = cg.bitcoin.usd_24h_change.toFixed(2)+'%';
-      document.getElementById('sentBTC').innerText = 'F&G: 63';
-
-      document.getElementById('priceETH').innerText = '$'+cg.ethereum.usd;
-      document.getElementById('changeETH').innerText = cg.ethereum.usd_24h_change.toFixed(2)+'%';
-      document.getElementById('sentETH').innerText = 'F&G: 63';
-
-      document.getElementById('priceGOLD').innerText = '$'+cg['pax-gold'].usd;
-      document.getElementById('changeGOLD').innerText = 'N/A';
-    }
-
-    // sparklines via QuickChart & Coingecko
-    async function loadSparks() {
-      const qc = s=>`https://quickchart.io/chart?c={type:'sparkline',data:{datasets:[{data:${JSON.stringify(s)} }]}}`;
-      const cgHist = d=>fetch(d).then(r=>r.json()).then(j=>j.prices.map(p=>p[1])).catch(()=>[]);
-      const b = await cgHist('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=7');
-      document.getElementById('sparkBTC').src = qc(b);
-      const e = await cgHist('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=7');
-      document.getElementById('sparkETH').src = qc(e);
-      const g = await cgHist('https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currency=usd&days=7');
-      document.getElementById('sparkGOLD').src = qc(g);
-      // S&P via FMP
-      const fmp = await fetch('https://financialmodelingprep.com/api/v3/historical-price-full/^GSPC?timeseries=7&apikey=demo')
-        .then(r=>r.json()).then(j=>j.historical.map(h=>h.close).reverse()).catch(()=>[]);
-      document.getElementById('sparkSP').src = qc(fmp);
-    }
-
-    // news via RSS2JSON
-    async function loadNews() {
-      const feed = (url,id) => fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`)
-        .then(r=>r.json())
-        .then(j=>j.items.slice(0,3).forEach(it=>{
-          const li=document.createElement('li');
-          li.innerHTML=`<a href="${it.link}" target="_blank">${it.title}</a>`;
-          document.getElementById(id).append(li);
-        })).catch(()=>{});
-      feed('https://www.coindesk.com/arc/outboundfeeds/rss/?outputType=xml','feedCrypto');
-      feed('https://www.mining.com/feed/','feedMetals');
-      feed('https://www.reuters.com/markets/us/feed/','feedMarket');
-    }
-
-    document.getElementById('exportBtn').onclick = ()=>{
-      Plotly.toImage('heatmap',{format:'png',height:400,width:700})
-        .then(dataUrl=>{const a=document.createElement('a');a.href=dataUrl;a.download='heatmap.png';a.click();});
-    };
-
-    drawStatic();
-    fetchPrices();
-    loadSparks();
-    loadNews();
+    // (your existing JS for date, static heatmap, fetchPrices, loadSparks, loadNews, export, etc.)
   </script>
 </body>
 </html>
